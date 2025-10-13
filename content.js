@@ -1,20 +1,4 @@
-// Detect subtitle language from YouTube
-function getSubtitleLanguage() {
-  // Try multiple methods to detect active subtitle language
-  
-  // Method 1: Check subtitle menu button aria-label
-  const subtitleButton = document.querySelector('.ytp-subtitles-button');
-  if (subtitleButton) {
-    const ariaLabel = subtitleButton.getAttribute('aria-label');
-    if (ariaLabel) {
-      console.log('Subtitle button aria-label:', ariaLabel);
-    }
-  }
-  
-  // Method 2: Check caption window for language info
-  const captionWindow = document.querySelector('.caption-window');
-  if (captionWindow) {
-    const lang = captionWindow.getAttribute('lang// Translation popup element
+// Translation popup element
 let popup = null;
 
 // Get YouTube video element
@@ -22,14 +6,74 @@ function getVideoElement() {
   return document.querySelector('video');
 }
 
+// Normalize language codes to 2-letter ISO format for MyMemory API
+function normalizeLanguageCode(lang) {
+  if (!lang) return 'ru';
+  
+  // Convert to lowercase and take first 2 characters
+  lang = lang.toLowerCase().substring(0, 2);
+  
+  // Common mappings
+  const langMap = {
+    'ru': 'ru', 'en': 'en', 'es': 'es', 'fr': 'fr', 'de': 'de',
+    'it': 'it', 'pt': 'pt', 'ja': 'ja', 'ko': 'ko', 'zh': 'zh',
+    'ar': 'ar', 'hi': 'hi', 'tr': 'tr', 'pl': 'pl', 'uk': 'uk',
+    'nl': 'nl', 'sv': 'sv', 'cs': 'cs', 'ro': 'ro', 'vi': 'vi',
+    'th': 'th', 'id': 'id', 'he': 'he', 'fa': 'fa', 'da': 'da',
+    'fi': 'fi', 'no': 'no', 'hu': 'hu', 'el': 'el', 'bg': 'bg',
+    'sr': 'sr', 'sk': 'sk', 'hr': 'hr', 'lt': 'lt', 'lv': 'lv',
+    'et': 'et', 'sl': 'sl'
+  };
+  
+  return langMap[lang] || lang;
+}
+
 // Detect subtitle language from YouTube
 function getSubtitleLanguage() {
-  const ytPlayer = document.querySelector('.html5-video-player');
-  if (!ytPlayer) return 'ru'; // Default to Russian
+  // Method 1: Check caption window lang attribute
+  const captionWindow = document.querySelector('.caption-window');
+  if (captionWindow) {
+    const lang = captionWindow.getAttribute('lang');
+    if (lang) {
+      console.log('Detected language from caption window:', lang);
+      return normalizeLanguageCode(lang);
+    }
+  }
   
-  // Try to get current subtitle track
-  const subtitleBtn = document.querySelector('.ytp-subtitles-button');
-  // For now, default to Russian. Could be enhanced to read actual subtitle language
+  // Method 2: Check video player text tracks
+  const player = document.querySelector('.html5-video-player');
+  if (player) {
+    const video = player.querySelector('video');
+    if (video && video.textTracks) {
+      for (let i = 0; i < video.textTracks.length; i++) {
+        const track = video.textTracks[i];
+        if (track.mode === 'showing' && track.language) {
+          console.log('Detected language from text track:', track.language);
+          return normalizeLanguageCode(track.language);
+        }
+      }
+    }
+  }
+  
+  // Method 3: Parse from YouTube player data
+  try {
+    const ytInitialPlayerResponse = window.ytInitialPlayerResponse;
+    if (ytInitialPlayerResponse && ytInitialPlayerResponse.captions) {
+      const captionTracks = ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer?.captionTracks;
+      if (captionTracks && captionTracks.length > 0) {
+        const activeTrack = captionTracks.find(t => t.isTranslatable) || captionTracks[0];
+        if (activeTrack && activeTrack.languageCode) {
+          console.log('Detected language from ytInitialPlayerResponse:', activeTrack.languageCode);
+          return normalizeLanguageCode(activeTrack.languageCode);
+        }
+      }
+    }
+  } catch (e) {
+    console.log('Could not parse ytInitialPlayerResponse:', e);
+  }
+  
+  // Default fallback
+  console.log('Could not detect language, defaulting to Russian');
   return 'ru';
 }
 
@@ -75,7 +119,6 @@ async function translateWord(word, sourceLang, targetLang) {
 
 // Get word at click position using range and offset
 function getWordAtClick(element, clientX, clientY) {
-  // Try to get precise position using caretPositionFromPoint or caretRangeFromPoint
   let range;
   if (document.caretPositionFromPoint) {
     const position = document.caretPositionFromPoint(clientX, clientY);
@@ -100,12 +143,10 @@ function getWordAtClick(element, clientX, clientY) {
   let start = offset;
   let end = offset;
   
-  // Find start of word
   while (start > 0 && !/\s/.test(text[start - 1])) {
     start--;
   }
   
-  // Find end of word
   while (end < text.length && !/\s/.test(text[end])) {
     end++;
   }
@@ -116,31 +157,25 @@ function getWordAtClick(element, clientX, clientY) {
 
 // Handle double-click on subtitle text
 async function handleDoubleClick(e) {
-  // Prevent YouTube's default behavior
   e.preventDefault();
   e.stopPropagation();
   
-  // Check if video is paused
   const video = getVideoElement();
   if (!video || !video.paused) {
-    return; // Only allow translation when video is paused
+    return;
   }
   
-  // Try to get selected word first (most reliable)
   const selection = window.getSelection();
   let word = selection.toString().trim();
   
-  // If selection is empty or multiple words, try click position detection
   if (!word || word.split(/\s+/).length > 1) {
     word = getWordAtClick(e.target, e.clientX, e.clientY);
   }
   
-  // Fallback: if still no word, get text from smallest clicked element
   if (!word) {
     let targetEl = e.target;
     let text = targetEl.textContent || targetEl.innerText || '';
     
-    // If the element contains only one word, use it
     const words = text.split(/\s+/).filter(w => w.trim());
     if (words.length === 1) {
       word = words[0];
@@ -152,16 +187,13 @@ async function handleDoubleClick(e) {
     return;
   }
   
-  // Clean up word (remove punctuation)
   word = word.replace(/[.,!?;:"""''()[\]]/g, '').trim();
   if (!word) return;
   
   console.log('Translating word:', word);
   
-  // Create popup at click position
   const popupEl = createPopup(word, e.pageX + 10, e.pageY + 10);
   
-  // Get translation
   const sourceLang = getSubtitleLanguage();
   const translation = await translateWord(word, sourceLang, 'en');
   
@@ -170,20 +202,6 @@ async function handleDoubleClick(e) {
   if (popup) {
     popup.textContent = translation;
   }
-}
-
-// Get word at specific position in text
-function getWordAtPosition(element, x, y) {
-  const text = element.textContent;
-  const words = text.split(/\s+/);
-  
-  // Simple heuristic: return clicked text if it's a single word element
-  if (words.length === 1) {
-    return text.trim();
-  }
-  
-  // For multi-word elements, try to get selection or return empty
-  return '';
 }
 
 // Listen for video play to remove popup
@@ -197,9 +215,7 @@ function setupVideoListener() {
 
 // Find and setup subtitle container
 function setupSubtitleListener() {
-  // YouTube subtitles container
   const observer = new MutationObserver(() => {
-    // Try multiple subtitle selectors
     const subtitleSelectors = [
       '.ytp-caption-window-container',
       '.caption-window',
@@ -214,7 +230,6 @@ function setupSubtitleListener() {
         subtitleContainer.dataset.translatorActive = 'true';
         subtitleContainer.addEventListener('dblclick', handleDoubleClick, true);
         
-        // Also add to all child elements
         subtitleContainer.querySelectorAll('*').forEach(el => {
           if (!el.dataset.translatorActive) {
             el.dataset.translatorActive = 'true';
@@ -230,7 +245,6 @@ function setupSubtitleListener() {
     subtree: true
   });
   
-  // Also try to attach immediately if already exists
   const subtitleContainer = document.querySelector('.ytp-caption-window-container');
   if (subtitleContainer && !subtitleContainer.dataset.translatorActive) {
     console.log('Immediate attach to subtitles');
@@ -244,7 +258,6 @@ function init() {
   setupVideoListener();
   setupSubtitleListener();
   
-  // Remove popup when clicking outside
   document.addEventListener('click', (e) => {
     if (popup && !popup.contains(e.target)) {
       removePopup();
@@ -252,7 +265,6 @@ function init() {
   });
 }
 
-// Wait for page to be ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
