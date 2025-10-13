@@ -1,8 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "My Extension",
+  "name": "YouTube Word Translator",
   "version": "1.0",
-  "action": {
-    "default_popup": "popup.html"
+  "description": "Double-click words in YouTube subtitles to translate them",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.mymemory.translated.net/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   }
 }
