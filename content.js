@@ -59,6 +59,10 @@ async function translateWord(word, sourceLang, targetLang) {
 
 // Handle double-click on subtitle text
 async function handleDoubleClick(e) {
+  // Prevent YouTube's default behavior
+  e.preventDefault();
+  e.stopPropagation();
+  
   // Check if video is paused
   const video = getVideoElement();
   if (!video || !video.paused) {
@@ -69,16 +73,38 @@ async function handleDoubleClick(e) {
   const selection = window.getSelection();
   let word = selection.toString().trim();
   
-  // If no selection, try to get word at click position
-  if (!word && e.target.textContent) {
-    word = getWordAtPosition(e.target, e.clientX, e.clientY);
+  // If no selection or full sentence selected, try to extract single word
+  if (!word || word.split(/\s+/).length > 1) {
+    // Get text from clicked element or its parent
+    let targetEl = e.target;
+    let text = targetEl.textContent || targetEl.innerText || '';
+    
+    // If clicked element has no text, try parent
+    if (!text && targetEl.parentElement) {
+      targetEl = targetEl.parentElement;
+      text = targetEl.textContent || targetEl.innerText || '';
+    }
+    
+    // Split into words and find closest to click
+    const words = text.split(/\s+/).filter(w => w.trim());
+    if (words.length === 1) {
+      word = words[0];
+    } else if (words.length > 1) {
+      // Use first word if multiple (could be improved with position detection)
+      word = words[0];
+    }
   }
   
-  if (!word) return;
+  if (!word) {
+    console.log('No word detected');
+    return;
+  }
   
   // Clean up word (remove punctuation)
-  word = word.replace(/[.,!?;:"""''()]/g, '').trim();
+  word = word.replace(/[.,!?;:"""''()[\]]/g, '').trim();
   if (!word) return;
+  
+  console.log('Translating word:', word);
   
   // Create popup at click position
   const popupEl = createPopup(word, e.pageX + 10, e.pageY + 10);
@@ -86,6 +112,8 @@ async function handleDoubleClick(e) {
   // Get translation
   const sourceLang = getSubtitleLanguage();
   const translation = await translateWord(word, sourceLang, 'en');
+  
+  console.log('Translation result:', translation);
   
   if (popup) {
     popup.textContent = translation;
@@ -119,11 +147,29 @@ function setupVideoListener() {
 function setupSubtitleListener() {
   // YouTube subtitles container
   const observer = new MutationObserver(() => {
-    const subtitleContainer = document.querySelector('.ytp-caption-window-container');
+    // Try multiple subtitle selectors
+    const subtitleSelectors = [
+      '.ytp-caption-window-container',
+      '.caption-window',
+      '.ytp-caption-segment'
+    ];
     
-    if (subtitleContainer && !subtitleContainer.dataset.translatorActive) {
-      subtitleContainer.dataset.translatorActive = 'true';
-      subtitleContainer.addEventListener('dblclick', handleDoubleClick);
+    for (const selector of subtitleSelectors) {
+      const subtitleContainer = document.querySelector(selector);
+      
+      if (subtitleContainer && !subtitleContainer.dataset.translatorActive) {
+        console.log('Found subtitle container:', selector);
+        subtitleContainer.dataset.translatorActive = 'true';
+        subtitleContainer.addEventListener('dblclick', handleDoubleClick, true);
+        
+        // Also add to all child elements
+        subtitleContainer.querySelectorAll('*').forEach(el => {
+          if (!el.dataset.translatorActive) {
+            el.dataset.translatorActive = 'true';
+            el.addEventListener('dblclick', handleDoubleClick, true);
+          }
+        });
+      }
     }
   });
   
@@ -135,8 +181,9 @@ function setupSubtitleListener() {
   // Also try to attach immediately if already exists
   const subtitleContainer = document.querySelector('.ytp-caption-window-container');
   if (subtitleContainer && !subtitleContainer.dataset.translatorActive) {
+    console.log('Immediate attach to subtitles');
     subtitleContainer.dataset.translatorActive = 'true';
-    subtitleContainer.addEventListener('dblclick', handleDoubleClick);
+    subtitleContainer.addEventListener('dblclick', handleDoubleClick, true);
   }
 }
 
