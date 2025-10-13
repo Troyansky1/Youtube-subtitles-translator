@@ -57,6 +57,47 @@ async function translateWord(word, sourceLang, targetLang) {
   }
 }
 
+// Get word at click position using range and offset
+function getWordAtClick(element, clientX, clientY) {
+  // Try to get precise position using caretPositionFromPoint or caretRangeFromPoint
+  let range;
+  if (document.caretPositionFromPoint) {
+    const position = document.caretPositionFromPoint(clientX, clientY);
+    if (position) {
+      range = document.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.setEnd(position.offsetNode, position.offset);
+    }
+  } else if (document.caretRangeFromPoint) {
+    range = document.caretRangeFromPoint(clientX, clientY);
+  }
+  
+  if (!range) return null;
+  
+  const textNode = range.startContainer;
+  if (textNode.nodeType !== Node.TEXT_NODE) return null;
+  
+  const text = textNode.textContent;
+  const offset = range.startOffset;
+  
+  // Find word boundaries around the offset
+  let start = offset;
+  let end = offset;
+  
+  // Find start of word
+  while (start > 0 && !/\s/.test(text[start - 1])) {
+    start--;
+  }
+  
+  // Find end of word
+  while (end < text.length && !/\s/.test(text[end])) {
+    end++;
+  }
+  
+  const word = text.substring(start, end).trim();
+  return word;
+}
+
 // Handle double-click on subtitle text
 async function handleDoubleClick(e) {
   // Prevent YouTube's default behavior
@@ -69,28 +110,23 @@ async function handleDoubleClick(e) {
     return; // Only allow translation when video is paused
   }
   
-  // Get the double-clicked word
+  // Try to get selected word first (most reliable)
   const selection = window.getSelection();
   let word = selection.toString().trim();
   
-  // If no selection or full sentence selected, try to extract single word
+  // If selection is empty or multiple words, try click position detection
   if (!word || word.split(/\s+/).length > 1) {
-    // Get text from clicked element or its parent
+    word = getWordAtClick(e.target, e.clientX, e.clientY);
+  }
+  
+  // Fallback: if still no word, get text from smallest clicked element
+  if (!word) {
     let targetEl = e.target;
     let text = targetEl.textContent || targetEl.innerText || '';
     
-    // If clicked element has no text, try parent
-    if (!text && targetEl.parentElement) {
-      targetEl = targetEl.parentElement;
-      text = targetEl.textContent || targetEl.innerText || '';
-    }
-    
-    // Split into words and find closest to click
+    // If the element contains only one word, use it
     const words = text.split(/\s+/).filter(w => w.trim());
     if (words.length === 1) {
-      word = words[0];
-    } else if (words.length > 1) {
-      // Use first word if multiple (could be improved with position detection)
       word = words[0];
     }
   }
