@@ -1,4 +1,20 @@
-// Translation popup element
+// Detect subtitle language from YouTube
+function getSubtitleLanguage() {
+  // Try multiple methods to detect active subtitle language
+  
+  // Method 1: Check subtitle menu button aria-label
+  const subtitleButton = document.querySelector('.ytp-subtitles-button');
+  if (subtitleButton) {
+    const ariaLabel = subtitleButton.getAttribute('aria-label');
+    if (ariaLabel) {
+      console.log('Subtitle button aria-label:', ariaLabel);
+    }
+  }
+  
+  // Method 2: Check caption window for language info
+  const captionWindow = document.querySelector('.caption-window');
+  if (captionWindow) {
+    const lang = captionWindow.getAttribute('lang// Translation popup element
 let popup = null;
 
 // Get YouTube video element
