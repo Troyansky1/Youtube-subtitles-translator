@@ -8,11 +8,55 @@
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 10000;
-  pointer-events: none;
+  pointer-events: auto;
   max-width: 200px;
   word-wrap: break-word;
   border: 1px solid #444;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yt-translator-lang-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  margin: 0;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.yt-translator-lang-button:hover {
+  opacity: 1;
+}
+
+.yt-translator-lang-selector {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10001;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 150px;
+}
+
+.yt-translator-lang-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: background 0.2s;
+}
+
+.yt-translator-lang-option:hover {
+  background: #3a3a3a;
 }
 
 .ytp-caption-window-container {

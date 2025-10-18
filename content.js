@@ -1,9 +1,12 @@
 // Translation popup element
 let popup = null;
 
-// Cache detected language per video
+// Cache detected language per video (in-memory, resets on page refresh)
 let cachedLanguage = null;
 let currentVideoId = null;
+
+// Manual language override (in-memory, resets on page refresh)
+let manualLanguage = null;
 
 // Get current video ID
 function getCurrentVideoId() {
@@ -190,9 +193,81 @@ function createPopup(text, x, y) {
   popup.style.left = `${x}px`;
   popup.style.top = `${y}px`;
   
+  // Add language selector icon
+  const langButton = document.createElement('button');
+  langButton.className = 'yt-translator-lang-button';
+  langButton.innerHTML = '🌐';
+  langButton.title = 'Change language';
+  langButton.onclick = (e) => {
+    e.stopPropagation();
+    showLanguageSelector(x, y);
+  };
+  popup.appendChild(langButton);
+  
   document.body.appendChild(popup);
   
   return popup;
+}
+
+// Show language selector dropdown
+function showLanguageSelector(x, y) {
+  const selector = document.createElement('div');
+  selector.className = 'yt-translator-lang-selector';
+  selector.style.left = `${x}px`;
+  selector.style.top = `${y + 40}px`;
+  
+  const languages = [
+    { code: 'ru', name: 'Russian' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+    { code: 'de', name: 'German' },
+    { code: 'it', name: 'Italian' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'zh', name: 'Chinese' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'he', name: 'Hebrew' },
+    { code: 'tr', name: 'Turkish' },
+    { code: 'pl', name: 'Polish' },
+    { code: 'nl', name: 'Dutch' },
+    { code: 'sv', name: 'Swedish' },
+    { code: 'no', name: 'Norwegian' },
+    { code: 'da', name: 'Danish' },
+    { code: 'fi', name: 'Finnish' },
+    { code: 'cs', name: 'Czech' },
+    { code: 'uk', name: 'Ukrainian' },
+    { code: 'vi', name: 'Vietnamese' },
+    { code: 'th', name: 'Thai' },
+    { code: 'hi', name: 'Hindi' },
+    { code: 'id', name: 'Indonesian' }
+  ];
+  
+  languages.forEach(lang => {
+    const option = document.createElement('div');
+    option.className = 'yt-translator-lang-option';
+    option.textContent = lang.name;
+    option.onclick = () => {
+      manualLanguage = lang.code;
+      cachedLanguage = lang.code;
+      console.log('Manual language set to:', lang.code);
+      document.body.removeChild(selector);
+      removePopup();
+    };
+    selector.appendChild(option);
+  });
+  
+  document.body.appendChild(selector);
+  
+  // Remove selector when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function removeSelector(e) {
+      if (selector.parentNode && !selector.contains(e.target)) {
+        document.body.removeChild(selector);
+        document.removeEventListener('click', removeSelector);
+      }
+    });
+  }, 100);
 }
 
 // Remove popup
@@ -305,12 +380,23 @@ async function handleDoubleClick(e) {
   const popupEl = createPopup(word, e.pageX + 10, e.pageY + 10);
   
   // Get or detect source language
-  let sourceLang = cachedLanguage;
+  let sourceLang = null;
   
-  if (!sourceLang) {
-    console.log('No cached language, detecting...');
+  // Priority 1: Manual language (if user set it)
+  if (manualLanguage) {
+    sourceLang = manualLanguage;
+    console.log('Using manual language:', manualLanguage);
+  }
+  // Priority 2: Cached language (from previous detection this session)
+  else if (cachedLanguage) {
+    sourceLang = cachedLanguage;
+    console.log('Using cached language:', cachedLanguage);
+  }
+  // Priority 3: Detect language
+  else {
+    console.log('No manual or cached language, detecting...');
     
-    // First try: Quick YouTube caption window check
+    // Try YouTube caption window
     const captionWindow = document.querySelector('.caption-window');
     const captionLang = captionWindow?.getAttribute('lang');
     if (captionLang && captionLang !== 'en' && captionLang !== 'und') {
@@ -318,31 +404,15 @@ async function handleDoubleClick(e) {
       console.log('Detected language from YouTube caption window:', sourceLang);
     }
     
-    // Second try: detect from the clicked word
+    // If YouTube detection failed, default to English and show language selector hint
     if (!sourceLang) {
-      console.log('YouTube detection failed, detecting from word...');
-      sourceLang = await detectLanguage(word);
-      console.log('Detected language from word:', sourceLang);
-      
-      // Third try: if detection seems uncertain (detected as English), verify with full subtitle text
-      if (sourceLang === 'en') {
-        const fullText = getVisibleSubtitleText();
-        if (fullText && fullText.length > 10) {
-          console.log('Verifying with full subtitle text...');
-          const detectedFromFull = await detectLanguage(fullText);
-          if (detectedFromFull !== 'en') {
-            sourceLang = detectedFromFull;
-            console.log('Corrected language from full text:', sourceLang);
-          }
-        }
-      }
+      console.log('YouTube detection failed, defaulting to English. User can change via 🌐 button.');
+      sourceLang = 'en';
     }
     
     // Cache the detected language
     cachedLanguage = sourceLang;
-    console.log('Cached language for this video:', cachedLanguage);
-  } else {
-    console.log('Using cached language:', cachedLanguage);
+    console.log('Cached language for this session:', cachedLanguage);
   }
   
   const translation = await translateWord(word, sourceLang, 'en');
