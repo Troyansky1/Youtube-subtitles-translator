@@ -3,7 +3,9 @@ A Chrome extension that helps you learn new languages by translating individual 
 Features
 
 Double-click translation: Click any word in YouTube subtitles to see its English translation
-Auto language detection: Automatically detects the subtitle language
+Manual language selector: 🌐 button lets you choose from 24+ languages
+Auto language detection: Automatically detects subtitle language from YouTube
+Session memory: Remembers your language choice until you refresh the page
 Non-intrusive: Only works when video is paused, preserving natural learning
 Free: Uses MyMemory API (10,000 words/day limit)
 Clean UI: Minimal popup that disappears when video plays
@@ -35,8 +37,11 @@ Enable subtitles (click CC button)
 Pause the video (translation only works when paused)
 Double-click any word in the subtitles
 See translation appear in a popup
+Change language (if needed): Click the 🌐 button in the popup and select the correct language
 Resume video to dismiss the popup
 
+Language Detection
+The extension automatically detects the subtitle language from YouTube's metadata. If the detection is incorrect (e.g., for auto-translated subtitles), simply click the 🌐 button in the translation popup to manually select the correct source language. Your selection will be remembered for the rest of the session.
 Supported Languages
 The extension automatically detects the subtitle language and translates to English. Supports all major languages including:
 
@@ -63,12 +68,14 @@ Translation not working?
 
 Make sure video is paused
 Check that subtitles are enabled (CC button)
+If translation seems wrong, click the 🌐 button and select the correct language
 Open Console (F12) to see debug messages
 
 Wrong language detected?
 
-Extension reads YouTube's active subtitle language
-Try changing subtitle language in video settings
+Click the 🌐 button in the translation popup
+Select the correct source language from the dropdown
+Your selection persists until you refresh the page
 
 Popup not appearing?
 

@@ -189,9 +189,12 @@ function createPopup(text, x, y) {
   
   popup = document.createElement('div');
   popup.className = 'yt-word-translator-popup';
-  popup.textContent = 'Translating...';
-  popup.style.left = `${x}px`;
-  popup.style.top = `${y}px`;
+  
+  // Create text container
+  const textSpan = document.createElement('span');
+  textSpan.className = 'yt-translator-text';
+  textSpan.textContent = 'Translating...';
+  popup.appendChild(textSpan);
   
   // Add language selector icon
   const langButton = document.createElement('button');
@@ -203,6 +206,9 @@ function createPopup(text, x, y) {
     showLanguageSelector(x, y);
   };
   popup.appendChild(langButton);
+  
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
   
   document.body.appendChild(popup);
   
@@ -420,7 +426,11 @@ async function handleDoubleClick(e) {
   console.log('Translation result:', translation);
   
   if (popup) {
-    popup.textContent = translation;
+    // Update only the text span, not the entire popup
+    const textSpan = popup.querySelector('.yt-translator-text');
+    if (textSpan) {
+      textSpan.textContent = translation;
+    }
   }
 }
 
